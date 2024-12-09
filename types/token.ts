@@ -1,4 +1,5 @@
 export interface TokenResult {
+  id: number;
   name: string;
   symbol: string;
   logo: string;

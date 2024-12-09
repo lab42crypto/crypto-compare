@@ -26,7 +26,7 @@ interface ContractAddress {
 
 interface CoinMarketCapMetadata {
   data: {
-    [key: string]: Array<{
+    [key: string]: {
       id: number;
       name: string;
       symbol: string;
@@ -52,9 +52,8 @@ interface CoinMarketCapMetadata {
       platform: Platform;
       date_added: string;
       twitter_username: string;
-      twitter_followers?: number;
       contract_address: ContractAddress[];
-    }>;
+    };
   };
   status: {
     timestamp: string;
@@ -66,29 +65,28 @@ interface CoinMarketCapMetadata {
   };
 }
 
-interface TokenData {
+interface TokenDataResponse {
   id: number;
   name: string;
   symbol: string;
-  num_market_pairs: number;
   total_supply: number;
   circulating_supply: number;
-  cmc_rank: number;
   quote: {
     USD: {
       price: number;
+      market_cap: number;
+      fully_diluted_market_cap: number;
       volume_24h: number;
       volume_change_24h: number;
       percent_change_1h: number;
       percent_change_24h: number;
-      market_cap: number;
-      market_cap_dominance: number;
-      fully_diluted_market_cap: number;
     };
   };
 }
 
-async function getTwitterFollowers(username: string): Promise<number> {
+async function getTwitterFollowers(
+  username: string
+): Promise<{ followers: number; suspended: boolean }> {
   try {
     const response = await fetch(
       `https://api.twitter.com/2/users/by/username/${username}?user.fields=public_metrics`,
@@ -112,14 +110,19 @@ async function getTwitterFollowers(username: string): Promise<number> {
       return getTwitterFollowersByCrawler(username);
     }
 
-    return data.data.public_metrics.followers_count;
+    return {
+      followers: data.data.public_metrics.followers_count,
+      suspended: false,
+    };
   } catch (error) {
     console.error("Error fetching Twitter followers:", error);
     return getTwitterFollowersByCrawler(username);
   }
 }
 
-async function getTwitterFollowersByCrawler(username: string): Promise<number> {
+async function getTwitterFollowersByCrawler(
+  username: string
+): Promise<{ followers: number; suspended: boolean }> {
   try {
     // Check cache first
     const cachedFollowers = await getCachedFollowers(username);
@@ -131,26 +134,30 @@ async function getTwitterFollowersByCrawler(username: string): Promise<number> {
     const twitterUrl = `https://twitter.com/${username}`;
     console.log("Scraping Twitter followers from:", twitterUrl);
 
-    const followers = await scrapeTwitterFollowers(twitterUrl);
-    console.log(`Followers for ${username}:`, followers);
+    const scrapedData = await scrapeTwitterFollowers(twitterUrl);
+    console.log(`Followers for ${username}:`, scrapedData);
 
-    // Cache the result
-    await cacheFollowers(username, followers);
+    // Cache the result with suspended status
+    await cacheFollowers(
+      username,
+      scrapedData.followers,
+      scrapedData.suspended
+    );
 
-    return followers;
+    return scrapedData;
   } catch (error) {
     console.error("Error scraping Twitter followers:", error);
-    return 0;
+    return { followers: 0, suspended: false };
   }
 }
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const tokens = searchParams.get("tokens")?.split(",");
+  const ids = searchParams.get("ids")?.split(",");
 
-  if (!tokens || tokens.length === 0) {
+  if (!ids || ids.length === 0) {
     return NextResponse.json(
-      { error: "Tokens parameter is required" },
+      { error: "Token IDs parameter is required" },
       { status: 400 }
     );
   }
@@ -158,7 +165,7 @@ export async function GET(request: Request) {
   try {
     // Fetch basic metrics
     const metricsResponse = await fetch(
-      `https://pro-api.coinmarketcap.com/v1/cryptocurrency/quotes/latest?symbol=${tokens.join(
+      `https://pro-api.coinmarketcap.com/v1/cryptocurrency/quotes/latest?id=${ids.join(
         ","
       )}`,
       {
@@ -179,7 +186,7 @@ export async function GET(request: Request) {
 
     // Fetch metadata for social info
     const metadataResponse = await fetch(
-      `https://pro-api.coinmarketcap.com/v2/cryptocurrency/info?symbol=${tokens.join(
+      `https://pro-api.coinmarketcap.com/v2/cryptocurrency/info?id=${ids.join(
         ","
       )}`,
       {
@@ -188,7 +195,6 @@ export async function GET(request: Request) {
         },
       }
     );
-
     if (!metadataResponse.ok) {
       throw new Error(`Failed to fetch metadata: ${metadataResponse.status}`);
     }
@@ -200,54 +206,52 @@ export async function GET(request: Request) {
 
     const result: Record<string, TokenResult> = {};
 
-    for (const [symbol, tokenData] of Object.entries(metricsData.data)) {
-      const metadataArray = metadataData.data[symbol];
-      const metadata = metadataArray?.[0];
+    for (const [id, tokenData] of Object.entries(metricsData.data)) {
+      const data = tokenData as TokenDataResponse;
+      const metadata = metadataData.data[id];
       const twitterUsername = metadata?.twitter_username;
 
-      const followers = twitterUsername
-        ? await getTwitterFollowers(twitterUsername)
-        : 0;
+      const twitterData = twitterUsername
+        ? await getTwitterFollowersByCrawler(twitterUsername)
+        : { followers: 0, suspended: false };
 
-      result[symbol] = {
-        name: tokenData.name,
-        symbol: tokenData.symbol,
+      result[id] = {
+        id: parseInt(id),
+        name: data.name,
+        symbol: data.symbol,
         logo:
           metadata?.logo ||
-          `https://s2.coinmarketcap.com/static/img/coins/64x64/${tokenData.id}.png`,
-        price: tokenData.quote.USD.price,
+          `https://s2.coinmarketcap.com/static/img/coins/64x64/${data.id}.png`,
+        price: data.quote.USD.price,
         marketCap:
-          tokenData.quote.USD.market_cap ||
-          tokenData.quote.USD.fully_diluted_market_cap,
+          data.quote.USD.market_cap || data.quote.USD.fully_diluted_market_cap,
         fullyDilutedMarketCap:
-          tokenData.quote.USD.fully_diluted_market_cap ||
-          tokenData.quote.USD.market_cap,
-        volume24h: tokenData.quote.USD.volume_24h,
-        totalSupply: tokenData.total_supply,
-        circulatingSupply: tokenData.circulating_supply,
+          data.quote.USD.fully_diluted_market_cap || data.quote.USD.market_cap,
+        volume24h: data.quote.USD.volume_24h,
+        totalSupply: data.total_supply,
+        circulatingSupply: data.circulating_supply,
         maxSupply: null,
-        percentChange24h: tokenData.quote.USD.percent_change_24h,
-        rank: tokenData.cmc_rank,
+        percentChange24h: data.quote.USD.percent_change_24h,
+        rank: data.cmc_rank,
         // Required fields from TokenResult interface with default values
-        fullyDilutedMarketCap:
-          tokenData.quote.USD.fully_diluted_market_cap || 0,
-        volumeChange24h: tokenData.quote.USD.volume_change_24h || 0,
-        percentChange1h: tokenData.quote.USD.percent_change_1h || 0,
-        percentChange7d: tokenData.quote.USD.percent_change_7d || 0,
-        percentChange30d: tokenData.quote.USD.percent_change_30d || 0,
-        percentChange60d: tokenData.quote.USD.percent_change_60d || 0,
-        percentChange90d: tokenData.quote.USD.percent_change_90d || 0,
+        volumeChange24h: data.quote.USD.volume_change_24h || 0,
+        percentChange1h: data.quote.USD.percent_change_1h || 0,
+        percentChange7d: data.quote.USD.percent_change_7d || 0,
+        percentChange30d: data.quote.USD.percent_change_30d || 0,
+        percentChange60d: data.quote.USD.percent_change_60d || 0,
+        percentChange90d: data.quote.USD.percent_change_90d || 0,
         circulatingSupplyPercent: 0,
         dominance: 0,
         turnover: 0,
-        twitterFollowers: followers,
+        twitterFollowers: twitterData.followers,
+        twitterSuspended: twitterData.suspended,
         redditSubscribers: 0,
         githubCommits: 0,
         githubStars: 0,
         githubContributors: 0,
         liquidityScore: 0,
         volatility24h: 0,
-        marketPairs: tokenData.num_market_pairs,
+        marketPairs: data.num_market_pairs,
         // Social links
         website: metadata?.urls?.website?.[0] || null,
         twitter: metadata?.urls?.twitter?.[0] || null,
@@ -257,7 +261,7 @@ export async function GET(request: Request) {
         github: metadata?.urls?.source_code?.[0] || null,
         twitterUsername: metadata?.twitter_username || null,
         telegramUsername: null,
-        circulatingMarketCap: tokenData.quote.USD.market_cap,
+        circulatingMarketCap: data.quote.USD.market_cap,
       };
     }
 

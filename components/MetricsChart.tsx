@@ -2,11 +2,11 @@
 
 import { useEffect, useRef } from "react";
 import Chart from "chart.js/auto";
-import type { TokenResult } from "@/types/token";
+import type { TokenResult, SearchToken } from "@/types/token";
 
 interface MetricsChartProps {
   results: TokenResult[];
-  selectedTokens: string[];
+  selectedTokens: SearchToken[];
 }
 
 interface ChartConfig {
@@ -46,14 +46,14 @@ export default function MetricsChart({
   selectedTokens,
 }: MetricsChartProps) {
   const sortedResults = selectedTokens
-    .map((symbol) => results.find((result) => result.symbol === symbol))
+    .map((token) => results.find((result) => result.id === parseInt(token.id)))
     .filter((result): result is TokenResult => result !== undefined);
 
   const chartConfigs: ChartConfig[] = [
     {
       id: "twitterFollowers",
       title: "Community Size Comparison",
-      key: "twitterFollowers",
+      key: (result) => (result.twitterSuspended ? 0 : result.twitterFollowers),
       label: "Twitter Followers",
       color: "rgb(29, 161, 242)",
       format: formatFollowers,
@@ -88,7 +88,11 @@ export default function MetricsChart({
 
   return (
     <div className="w-full mt-8">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div
+        className={`grid grid-cols-1 md:grid-cols-2 ${
+          sortedResults.length <= 4 ? "lg:grid-cols-4" : "lg:grid-cols-2"
+        } gap-4`}
+      >
         {chartConfigs.map((config) => (
           <ChartSection
             key={config.id}
@@ -121,7 +125,7 @@ function ChartSection({
     const chart = new Chart(chartRef.current, {
       type: "bar",
       data: {
-        labels: results.map((result) => result.symbol),
+        labels: results.map((result) => result.name),
         datasets: [
           {
             label: config.label,
@@ -262,7 +266,11 @@ function ChartSection({
 
   return (
     <div className="bg-white p-4 rounded-lg shadow-lg">
-      <div className="h-[250px] bg-white">
+      <div
+        className={`bg-white ${
+          results.length <= 4 ? "h-[250px]" : "h-[350px]" // Increased height for more items
+        }`}
+      >
         <canvas ref={chartRef}></canvas>
       </div>
     </div>

@@ -7,7 +7,7 @@ import { formatPrice } from "@/utils/formatters";
 
 interface ComparisonTableProps {
   results: TokenResult[];
-  selectedTokens: string[];
+  selectedTokens: SearchToken[];
   onDownloadAll: () => Promise<void>;
 }
 
@@ -116,7 +116,7 @@ export default function ComparisonTable({
   };
 
   const sortedResults = selectedTokens
-    .map((symbol) => results.find((result) => result.symbol === symbol))
+    .map((token) => results.find((result) => result.id === parseInt(token.id)))
     .filter((result): result is TokenResult => result !== undefined);
 
   const rows = [
@@ -212,7 +212,12 @@ export default function ComparisonTable({
     {
       key: "twitterFollowers",
       label: "Twitter Followers",
-      format: (value: number) => (value > 0 ? value.toLocaleString() : "N/A"),
+      format: (value: number, result: TokenResult) =>
+        result.twitterSuspended
+          ? "Account Suspended"
+          : value > 0
+          ? value.toLocaleString()
+          : "N/A",
     },
   ];
 
@@ -308,7 +313,7 @@ export default function ComparisonTable({
                             }}
                           />
                           <span className="font-medium inline-block align-middle ml-1">
-                            {result.symbol}
+                            {result.name}
                           </span>
                         </div>
                       ))}

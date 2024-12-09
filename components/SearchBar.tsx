@@ -2,12 +2,23 @@
 
 import { useState, useEffect, useCallback } from "react";
 import debounce from "lodash.debounce";
+import {
+  DragDropContext,
+  Droppable,
+  Draggable,
+  DropResult,
+} from "react-beautiful-dnd";
 
 interface TokenResult {
   id: number;
   name: string;
   symbol: string;
   logo: string;
+  rank: number;
+  price?: number;
+  percentChange24h?: number;
+  volume24h?: number;
+  marketCap?: number;
 }
 
 interface SearchToken {
@@ -21,18 +32,23 @@ interface SearchBarProps {
   onTokenSelect: (token: SearchToken) => void;
   selectedTokens: SearchToken[];
   onSearch: () => void;
+  onClearAll: () => void;
+  onReorder: (tokens: SearchToken[]) => void;
 }
 
 export default function SearchBar({
   onTokenSelect,
   selectedTokens,
   onSearch,
+  onClearAll,
+  onReorder,
 }: SearchBarProps) {
   const [search, setSearch] = useState("");
   const [results, setResults] = useState<TokenResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
 
-  const fetchResults = useCallback(
+  const debouncedFetch = useCallback(
     debounce(async (query: string) => {
       if (!query.trim()) {
         setResults([]);
@@ -50,7 +66,6 @@ export default function SearchBar({
         }
 
         const data = await response.json();
-        console.log("Search results:", data);
         setResults(data.tokens || []);
       } catch (error) {
         console.error("Error fetching data:", error);
@@ -58,27 +73,39 @@ export default function SearchBar({
       } finally {
         setIsLoading(false);
       }
-    }, 300),
-    []
+    }, 500),
+    [setIsLoading, setResults]
   );
 
   useEffect(() => {
     if (search.length >= 2) {
-      fetchResults(search);
+      debouncedFetch(search);
+      return () => {
+        debouncedFetch.cancel();
+      };
     } else {
       setResults([]);
     }
-  }, [search, fetchResults]);
+  }, [search, debouncedFetch]);
 
   const handleTokenSelect = (token: TokenResult) => {
-    onTokenSelect({
-      id: token.id,
-      name: token.name,
-      symbol: token.symbol,
-      logo: token.logo,
-    });
+    onTokenSelect(token);
+  };
+
+  const handleConfirmSelection = () => {
     setSearch("");
     setResults([]);
+    setShowDropdown(false);
+  };
+
+  const handleDragEnd = (result: DropResult) => {
+    if (!result.destination) return;
+
+    const items = Array.from(selectedTokens);
+    const [reorderedItem] = items.splice(result.source.index, 1);
+    items.splice(result.destination.index, 0, reorderedItem);
+
+    onReorder(items);
   };
 
   return (
@@ -87,7 +114,11 @@ export default function SearchBar({
         <input
           type="text"
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => {
+            setSearch(e.target.value);
+            setShowDropdown(true);
+          }}
+          onFocus={() => setShowDropdown(true)}
           placeholder="Search cryptocurrencies..."
           className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-800"
         />
@@ -98,69 +129,138 @@ export default function SearchBar({
           </div>
         )}
 
-        {results.length > 0 && (
-          <div className="absolute w-full mt-2 border border-gray-300 rounded-lg shadow-lg bg-white z-50 max-h-60 overflow-y-auto">
-            {results.map((token) => (
-              <div
-                key={token.id}
-                onClick={() => handleTokenSelect(token)}
-                className={`p-3 hover:bg-blue-100 cursor-pointer text-gray-900 flex items-center justify-between ${
-                  selectedTokens.some((t) => t.symbol === token.symbol)
-                    ? "bg-blue-50"
-                    : ""
-                }`}
-              >
-                <div className="flex items-center">
-                  <img
-                    src={token.logo}
-                    alt={`${token.name} logo`}
-                    className="w-6 h-6 mr-2 rounded-full"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).src =
-                        "https://s2.coinmarketcap.com/static/img/coins/64x64/1.png";
-                    }}
-                  />
-                  <div>
-                    <span className="font-medium">{token.name}</span>
-                    <span className="ml-2 text-sm text-gray-500">
-                      ({token.symbol})
-                    </span>
+        {showDropdown && results.length > 0 && (
+          <div className="absolute w-full mt-2 border border-gray-300 rounded-lg shadow-lg bg-white z-50">
+            <div className="max-h-96 overflow-y-auto">
+              {results.map((token) => (
+                <div
+                  key={token.id}
+                  onClick={() => handleTokenSelect(token)}
+                  className={`p-4 hover:bg-blue-50 cursor-pointer text-gray-900 border-b last:border-b-0 ${
+                    selectedTokens.some((t) => t.id === token.id)
+                      ? "bg-blue-50"
+                      : ""
+                  }`}
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-start">
+                      <img
+                        src={token.logo}
+                        alt={`${token.name} logo`}
+                        className="w-8 h-8 mr-3 rounded-full"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src =
+                            "https://s2.coinmarketcap.com/static/img/coins/64x64/1.png";
+                        }}
+                      />
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">{token.name}</span>
+                          <span className="text-sm text-gray-500">
+                            ({token.symbol})
+                          </span>
+                          {token.rank && (
+                            <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
+                              #{token.rank}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <div>
+                      {selectedTokens.some((t) => t.id === token.id) ? (
+                        <span className="text-blue-500">✓</span>
+                      ) : (
+                        <span className="text-gray-400 text-xs">
+                          Click to select
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
-                {selectedTokens.some((t) => t.symbol === token.symbol) && (
-                  <span className="text-blue-500">✓</span>
-                )}
-              </div>
-            ))}
+              ))}
+            </div>
+
+            <div className="sticky bottom-0 p-3 border-t border-gray-200 bg-white">
+              <button
+                onClick={handleConfirmSelection}
+                className="w-full py-2 px-4 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+              >
+                Confirm Selection ({selectedTokens.length} tokens)
+              </button>
+            </div>
           </div>
         )}
       </div>
 
       {/* Selected Tokens Display */}
-      <div className="mt-4 flex flex-wrap gap-2">
-        {selectedTokens.map((token) => (
-          <div
-            key={token.symbol}
-            className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm flex items-center"
-          >
-            <img
-              src={token.logo}
-              alt={`${token.name} logo`}
-              className="w-4 h-4 mr-2 rounded-full"
-              onError={(e) => {
-                (e.target as HTMLImageElement).src =
-                  "https://s2.coinmarketcap.com/static/img/coins/64x64/1.png";
-              }}
-            />
-            {token.symbol}
+      <div className="mt-4">
+        {selectedTokens.length > 0 && (
+          <div className="flex justify-between items-center mb-2">
+            <span className="text-sm text-gray-600">
+              Selected Tokens: {selectedTokens.length}
+            </span>
             <button
-              onClick={() => onTokenSelect(token)}
-              className="ml-2 text-blue-600 hover:text-blue-800"
+              onClick={onClearAll}
+              className="text-sm text-red-500 hover:text-red-700"
             >
-              ×
+              Clear All
             </button>
           </div>
-        ))}
+        )}
+        <DragDropContext onDragEnd={handleDragEnd}>
+          <Droppable
+            droppableId="tokens"
+            direction="horizontal"
+            isDropDisabled={false}
+            isCombineEnabled={false}
+            ignoreContainerClipping={false}
+          >
+            {(provided) => (
+              <div
+                ref={provided.innerRef}
+                {...provided.droppableProps}
+                className="flex flex-wrap gap-2"
+              >
+                {selectedTokens.map((token, index) => (
+                  <Draggable
+                    key={token.id}
+                    draggableId={token.id.toString()}
+                    index={index}
+                    isDragDisabled={false}
+                  >
+                    {(provided) => (
+                      <div
+                        ref={provided.innerRef}
+                        {...provided.draggableProps}
+                        {...provided.dragHandleProps}
+                        className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm flex items-center cursor-move"
+                      >
+                        <img
+                          src={token.logo}
+                          alt={`${token.name} logo`}
+                          className="w-4 h-4 mr-2 rounded-full"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src =
+                              "https://s2.coinmarketcap.com/static/img/coins/64x64/1.png";
+                          }}
+                        />
+                        {token.name}
+                        <button
+                          onClick={() => onTokenSelect(token)}
+                          className="ml-2 text-blue-600 hover:text-blue-800"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    )}
+                  </Draggable>
+                ))}
+                {provided.placeholder}
+              </div>
+            )}
+          </Droppable>
+        </DragDropContext>
       </div>
 
       {/* Search Button */}
@@ -175,8 +275,6 @@ export default function SearchBar({
       >
         {selectedTokens.length === 0
           ? "Select tokens to compare"
-          : selectedTokens.length === 5
-          ? "Maximum tokens selected"
           : "Compare Selected Tokens"}
       </button>
     </div>

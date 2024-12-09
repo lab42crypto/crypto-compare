@@ -13,12 +13,10 @@ export default function Home() {
   const [isSearching, setIsSearching] = useState(false);
 
   const handleTokenSelect = (token: SearchToken) => {
-    if (!selectedTokens.find((t) => t.symbol === token.symbol)) {
+    if (!selectedTokens.find((t) => t.id === token.id)) {
       setSelectedTokens([...selectedTokens, token]);
     } else {
-      setSelectedTokens(
-        selectedTokens.filter((t) => t.symbol !== token.symbol)
-      );
+      setSelectedTokens(selectedTokens.filter((t) => t.id !== token.id));
     }
   };
 
@@ -28,17 +26,15 @@ export default function Home() {
     setIsSearching(true);
     try {
       const response = await fetch(
-        `/api/token-metrics?tokens=${selectedTokens
-          .map((t) => t.symbol)
-          .join(",")}`
+        `/api/token-metrics?ids=${selectedTokens.map((t) => t.id).join(",")}`
       );
       if (!response.ok) {
         throw new Error("Failed to fetch token data");
       }
       const data = await response.json();
       setSearchResults(
-        Object.entries(data).map(([name, metrics]) => ({
-          name,
+        Object.entries(data).map(([id, metrics]) => ({
+          id: parseInt(id),
           ...metrics,
         }))
       );
@@ -112,6 +108,10 @@ export default function Home() {
     }
   };
 
+  const handleReorder = (reorderedTokens: SearchToken[]) => {
+    setSelectedTokens(reorderedTokens);
+  };
+
   return (
     <main className="min-h-screen p-8">
       <h1 className="text-3xl font-bold mb-8">Crypto Comparison</h1>
@@ -120,6 +120,8 @@ export default function Home() {
         onTokenSelect={handleTokenSelect}
         selectedTokens={selectedTokens}
         onSearch={handleSearch}
+        onClearAll={() => setSelectedTokens([])}
+        onReorder={handleReorder}
       />
 
       {isSearching ? (
@@ -130,14 +132,14 @@ export default function Home() {
             <div id="comparison-table">
               <ComparisonTable
                 results={searchResults}
-                selectedTokens={selectedTokens.map((token) => token.symbol)}
+                selectedTokens={selectedTokens}
                 onDownloadAll={handleDownloadAll}
               />
             </div>
             <div id="metrics-charts">
               <MetricsChart
                 results={searchResults}
-                selectedTokens={selectedTokens.map((token) => token.symbol)}
+                selectedTokens={selectedTokens}
               />
             </div>
           </>

@@ -63,10 +63,11 @@ curl '${url}' \\
       return NextResponse.json({ tokens: [] });
     }
 
-    const tokens = data.data.slice(0, 10).map((token: CoinMarketCapToken) => ({
+    const tokens = data.data.slice(0, 50).map((token: CoinMarketCapToken) => ({
       id: token.id,
       name: token.name,
       symbol: token.symbol,
+      rank: token.rank,
       logo: `https://s2.coinmarketcap.com/static/img/coins/64x64/${token.id}.png`,
     }));
 
