@@ -46,7 +46,7 @@ export default function MetricsChart({
   selectedTokens,
 }: MetricsChartProps) {
   const sortedResults = selectedTokens
-    .map((token) => results.find((result) => result.id === parseInt(token.id)))
+    .map((token) => results.find((result) => result.id === token.id))
     .filter((result): result is TokenResult => result !== undefined);
 
   const chartConfigs: ChartConfig[] = [
@@ -132,12 +132,12 @@ function ChartSection({
             data: results.map((result) => getValue(result)),
             backgroundColor: results.map((result) => {
               const value = getValue(result);
-              const color = config.getColor?.(value) || config.color;
+              const color = config.getColor?.(value as number) || config.color;
               return `${color}4D`;
             }),
             borderColor: results.map((result) => {
               const value = getValue(result);
-              return config.getColor?.(value) || config.color;
+              return config.getColor?.(value as number) || config.color;
             }),
             borderWidth: 1,
           },

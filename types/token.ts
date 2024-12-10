@@ -22,6 +22,7 @@ export interface TokenResult {
   dominance: number;
   turnover: number;
   twitterFollowers: number;
+  twitterSuspended: boolean;
   redditSubscribers: number;
   githubCommits: number;
   githubStars: number;

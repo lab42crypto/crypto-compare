@@ -71,6 +71,8 @@ interface TokenDataResponse {
   symbol: string;
   total_supply: number;
   circulating_supply: number;
+  cmc_rank: number;
+  num_market_pairs: number;
   quote: {
     USD: {
       price: number;
@@ -80,6 +82,10 @@ interface TokenDataResponse {
       volume_change_24h: number;
       percent_change_1h: number;
       percent_change_24h: number;
+      percent_change_7d: number;
+      percent_change_30d: number;
+      percent_change_60d: number;
+      percent_change_90d: number;
     };
   };
 }
@@ -242,7 +248,11 @@ export async function GET(request: Request) {
         percentChange90d: data.quote.USD.percent_change_90d || 0,
         circulatingSupplyPercent: 0,
         dominance: 0,
-        turnover: 0,
+        turnover:
+          (data.quote.USD.volume_24h /
+            (data.quote.USD.market_cap ||
+              data.quote.USD.fully_diluted_market_cap)) *
+          100,
         twitterFollowers: twitterData.followers,
         twitterSuspended: twitterData.suspended,
         redditSubscribers: 0,

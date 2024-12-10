@@ -1,123 +1,33 @@
 "use client";
 
-import { useRef } from "react";
-import html2canvas from "html2canvas";
-import type { TokenResult } from "@/types/token";
+import { RefObject } from "react";
+import type { TokenResult, SearchToken } from "@/types/token";
 import { formatPrice } from "@/utils/formatters";
 
 interface ComparisonTableProps {
   results: TokenResult[];
   selectedTokens: SearchToken[];
-  onDownloadAll: () => Promise<void>;
+  tableContentRef: RefObject<HTMLDivElement>;
 }
 
 export default function ComparisonTable({
   results,
   selectedTokens,
-  onDownloadAll,
+  tableContentRef,
 }: ComparisonTableProps) {
-  const tableRef = useRef<HTMLDivElement>(null);
-
-  const handleDownload = async () => {
-    if (!tableRef.current) return;
-
-    try {
-      // Get the scrollable container
-      const scrollContainer = tableRef.current;
-      const originalOverflow = scrollContainer.style.overflow;
-      const originalWidth = scrollContainer.style.width;
-
-      // Temporarily modify the container to show full content
-      scrollContainer.style.overflow = "visible";
-      scrollContainer.style.width = `${scrollContainer.scrollWidth}px`;
-
-      // Pre-load images
-      const images = scrollContainer.getElementsByTagName("img");
-      await Promise.all(
-        Array.from(images).map((img) => {
-          if (img.complete) return Promise.resolve();
-          return new Promise((resolve) => {
-            img.onload = resolve;
-            img.onerror = () => {
-              img.src =
-                "https://s2.coinmarketcap.com/static/img/coins/64x64/1.png";
-              resolve();
-            };
-          });
-        })
-      );
-
-      // Capture the full table
-      const canvas = await html2canvas(scrollContainer, {
-        scale: 2,
-        backgroundColor: "#ffffff",
-        useCORS: true,
-        allowTaint: true,
-        foreignObjectRendering: false,
-        logging: false,
-        imageTimeout: 15000,
-        width: scrollContainer.scrollWidth, // Set width to full scrollable width
-        height: scrollContainer.scrollHeight,
-        onclone: (clonedDoc: Document) => {
-          const clonedImages = clonedDoc.getElementsByTagName("img");
-          Array.from(clonedImages).forEach((img: HTMLImageElement) => {
-            img.crossOrigin = "anonymous";
-          });
-        },
-      });
-
-      // Restore original container styles
-      scrollContainer.style.overflow = originalOverflow;
-      scrollContainer.style.width = originalWidth;
-
-      // Download the image
-      const link = document.createElement("a");
-      link.download = `crypto-comparison-${
-        new Date().toISOString().split("T")[0]
-      }.png`;
-      link.href = canvas.toDataURL("image/png");
-      link.click();
-    } catch (error) {
-      console.error("Error downloading table:", error);
-    }
-  };
-
-  const handleDownloadMetrics = async () => {
-    const chartsElement = document.querySelector("#metrics-charts");
-    if (!chartsElement) return;
-
-    try {
-      const canvas = await html2canvas(chartsElement as HTMLElement, {
-        scale: 2,
-        backgroundColor: "#ffffff",
-        useCORS: true,
-        allowTaint: true,
-        foreignObjectRendering: false,
-        logging: false,
-        imageTimeout: 15000,
-      });
-
-      const link = document.createElement("a");
-      link.download = `crypto-metrics-${
-        new Date().toISOString().split("T")[0]
-      }.png`;
-      link.href = canvas.toDataURL("image/png");
-      link.click();
-    } catch (error) {
-      console.error("Error downloading metrics:", error);
-    }
-  };
-
-  const calculateSupplyPercentage = (circulating: number, total: number) => {
-    // If circulating is 0 or missing but total exists, use total as circulating
-    const effectiveCirculating = !circulating && total ? total : circulating;
-    if (!total || !effectiveCirculating) return 0;
-    return (effectiveCirculating / total) * 100;
-  };
-
   const sortedResults = selectedTokens
-    .map((token) => results.find((result) => result.id === parseInt(token.id)))
+    .map((token) => results.find((result) => result.id === token.id))
     .filter((result): result is TokenResult => result !== undefined);
+
+  // Format current time to UTC hour
+  const currentTime = new Date().toLocaleString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    hour12: true,
+    timeZone: "UTC",
+  });
 
   const rows = [
     { key: "rank", label: "Rank", format: (value: number) => `#${value}` },
@@ -151,14 +61,7 @@ export default function ComparisonTable({
     {
       key: "turnover",
       label: "24h Turnover Rate",
-      format: (value: number, result: TokenResult) => {
-        const rate = (result.volume24h / result.marketCap) * 100;
-        return `${rate.toFixed(2)}%`;
-      },
-      className: (value: number, result: TokenResult) => {
-        const rate = (result.volume24h / result.marketCap) * 100;
-        return rate >= 100 ? "text-orange-500 font-bold" : "text-gray-900";
-      },
+      format: (value: number) => `${value?.toFixed(2)}%`,
     },
     {
       key: "totalSupply",
@@ -168,45 +71,36 @@ export default function ComparisonTable({
     {
       key: "circulatingSupply",
       label: "Circulating Supply",
-      format: (value: number, result: TokenResult) => {
-        // Use total supply if circulating is 0 or missing
-        const effectiveValue =
-          !value && result.totalSupply ? result.totalSupply : value;
-        return effectiveValue?.toLocaleString() || "N/A";
-      },
+      format: (value: number) => value?.toLocaleString() || "N/A",
     },
     {
       key: "circulatingSupplyPercent",
       label: "Circulating/Total %",
-      format: (_, result: TokenResult) => {
-        // Use total supply if circulating is 0 or missing
+      format: (_: any, result: TokenResult) => {
         const effectiveCirculating =
           !result.circulatingSupply && result.totalSupply
             ? result.totalSupply
             : result.circulatingSupply;
-
-        return `${calculateSupplyPercentage(
-          effectiveCirculating,
-          result.totalSupply
-        ).toFixed(2)}%`;
+        return effectiveCirculating && result.totalSupply
+          ? `${((effectiveCirculating / result.totalSupply) * 100).toFixed(2)}%`
+          : "N/A";
       },
     },
     {
       key: "twitter",
       label: "Twitter",
-      format: (value: string | null, result: TokenResult) =>
+      format: (value?: string) =>
         value ? (
           <a
             href={value}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-blue-500 hover:text-blue-700 flex items-center gap-2"
+            className="text-blue-500 hover:text-blue-600"
           >
-            <i className="fab fa-twitter"></i>
-            <span>{value}</span>
+            {value}
           </a>
         ) : (
-          <span className="text-gray-400">Not available</span>
+          "N/A"
         ),
     },
     {
@@ -221,48 +115,20 @@ export default function ComparisonTable({
     },
   ];
 
-  // Format current time to UTC hour
-  const currentTime = new Date().toLocaleString("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    hour12: true,
-    timeZone: "UTC",
-  });
-
   return (
     <div className="w-full mt-4">
-      <div className="flex justify-end mb-4 gap-2">
-        <button
-          onClick={onDownloadAll}
-          className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 flex items-center gap-2 shadow-md"
-        >
-          <i className="fas fa-download"></i>
-          Download All
-        </button>
-        <button
-          onClick={handleDownload}
-          className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 flex items-center gap-2 shadow-md"
-        >
-          <i className="fas fa-download"></i>
-          Download Table
-        </button>
-        <button
-          onClick={handleDownloadMetrics}
-          className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 flex items-center gap-2 shadow-md"
-        >
-          <i className="fas fa-download"></i>
-          Download Charts
-        </button>
-      </div>
-      <div ref={tableRef} className="overflow-x-auto bg-white rounded-lg">
-        <div className="relative">
+      <div
+        ref={tableContentRef}
+        className="overflow-x-auto bg-white rounded-lg"
+      >
+        <div className="relative min-w-max">
           <div
             className="absolute inset-0 pointer-events-none"
             style={{
               background: "transparent",
               zIndex: 1,
+              width: "100%",
+              height: "100%",
             }}
           >
             {Array.from({ length: 9 }).map((_, i) => (
@@ -364,17 +230,19 @@ export default function ComparisonTable({
                   <td className="px-6 py-4 text-xs font-medium text-gray-600">
                     {row.label}
                   </td>
-                  {sortedResults.map((result) => (
+                  {sortedResults.map((result: TokenResult) => (
                     <td
                       key={result.symbol}
                       className={`px-6 py-4 text-sm font-mono whitespace-nowrap ${
                         row.className?.(
-                          result[row.key as keyof TokenResult] as number,
-                          result
+                          result[row.key as keyof TokenResult] as number
                         ) || "text-gray-900"
                       }`}
                     >
-                      {row.format(result[row.key as keyof TokenResult], result)}
+                      {row.format(
+                        result[row.key as keyof TokenResult] as never,
+                        result
+                      )}
                     </td>
                   ))}
                 </tr>

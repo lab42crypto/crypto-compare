@@ -197,9 +197,14 @@ export default function SearchBar({
       <div className="mt-4">
         {selectedTokens.length > 0 && (
           <div className="flex justify-between items-center mb-2">
-            <span className="text-sm text-gray-600">
-              Selected Tokens: {selectedTokens.length}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-600">
+                Selected Tokens: {selectedTokens.length}
+              </span>
+              <span className="text-xs text-gray-400 italic">
+                (drag to reorder)
+              </span>
+            </div>
             <button
               onClick={onClearAll}
               className="text-sm text-red-500 hover:text-red-700"
