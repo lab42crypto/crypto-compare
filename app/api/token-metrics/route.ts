@@ -235,7 +235,9 @@ export async function GET(request: Request) {
           data.quote.USD.fully_diluted_market_cap || data.quote.USD.market_cap,
         volume24h: data.quote.USD.volume_24h,
         totalSupply: data.total_supply,
-        circulatingSupply: data.circulating_supply,
+        circulatingSupply: data.circulating_supply || data.total_supply,
+        circulatingSupplyPercent:
+          (data.circulating_supply || data.total_supply) / data.total_supply,
         maxSupply: null,
         percentChange24h: data.quote.USD.percent_change_24h,
         rank: data.cmc_rank,
@@ -246,7 +248,7 @@ export async function GET(request: Request) {
         percentChange30d: data.quote.USD.percent_change_30d || 0,
         percentChange60d: data.quote.USD.percent_change_60d || 0,
         percentChange90d: data.quote.USD.percent_change_90d || 0,
-        circulatingSupplyPercent: 0,
+
         dominance: 0,
         turnover:
           (data.quote.USD.volume_24h /

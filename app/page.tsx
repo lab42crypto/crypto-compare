@@ -22,6 +22,7 @@ export default function Home() {
   const chartsRef = useRef<HTMLDivElement>(null);
 
   const fetchInitialTokens = useCallback(async (ids: number[]) => {
+    setIsSearching(true);
     try {
       // First fetch token details
       const response = await fetch(`/api/token-metrics?ids=${ids.join(",")}`);
@@ -47,6 +48,8 @@ export default function Home() {
       );
     } catch (error) {
       console.error("Error fetching initial tokens:", error);
+    } finally {
+      setIsSearching(false);
     }
   }, []);
 
