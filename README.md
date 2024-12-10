@@ -7,11 +7,9 @@ A real-time cryptocurrency comparison tool that allows users to analyze and comp
 You can compare tokens by:
 
 1. Direct URL: `http://localhost:3000/?tokenids=20947,32452,21794`
-
    - MOVE
    - SUI
    - APTOS
-
 2. Using the search bar:
    - Search by name or symbol
    - Select multiple tokens
@@ -21,17 +19,17 @@ You can compare tokens by:
 
 ## Features
 
-- Multi-token comparison with unlimited selection
-- Real-time market data from CoinMarketCap
-- Twitter follower tracking with suspension detection
-- Interactive and sortable comparison tables
-- Dynamic charts with auto-scaling
-- Downloadable comparison tables and charts
-- Responsive design
-- UTC time synchronization
-- Automatic data formatting for readability
-- Smart token search with ranking algorithm
-- Drag-and-drop token reordering
+- **Multi-token comparison**: Compare multiple tokens simultaneously with unlimited selection.
+- **Real-time market data**: Fetches data from CoinMarketCap API.
+- **Twitter follower tracking**: Includes suspension detection.
+- **Interactive and sortable tables**: For easy comparison.
+- **Dynamic charts**: Auto-scaling charts for visual representation.
+- **Downloadable content**: Users can download comparison tables and charts.
+- **Responsive design**: Ensures usability across devices.
+- **Smart search**: Token search with ranking algorithm.
+- **Drag-and-drop**: Reordering of tokens.
+- **UTC time synchronization**: Ensures consistent time display.
+- **Automatic data formatting**: For readability.
 
 ## Tech Stack
 
@@ -61,9 +59,11 @@ Create a `.env.local` file in the root directory with the following variables:
 # Required
 CMC_API_KEY=your_coinmarketcap_api_key
 NEXT_PUBLIC_CMC_API_KEY=your_coinmarketcap_api_key
+
 # Optional - for Twitter API access
 TWITTER_BEARER_TOKEN=your_twitter_bearer_token
-# Cache durations in milliseconds (default: 4 hours = 4 60 60 1000)
+
+# Cache durations in milliseconds (default: 4 hours = 4 * 60 * 60 * 1000)
 TWITTER_CACHE_DURATION=14400000
 TOKEN_LIST_CACHE_DURATION=14400000
 ```
@@ -119,12 +119,18 @@ Cache durations can be configured via environment variables.
 
 ### Market Data
 
+- Rank
 - Price
 - Market Cap
 - Fully Diluted Value (FDV)
 - 24h Volume
 - 24h Price Change
-- Turnover Rate
+- 24h Turnover Rate
+- Total Supply
+- Circulating Supply
+- Circulating/Total %
+- Twitter Link
+- Twitter Followers
 
 ### Supply Metrics
 
