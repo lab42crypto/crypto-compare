@@ -1,6 +1,23 @@
 # Crypto Comparison Tool
 
-A real-time cryptocurrency comparison tool that allows users to analyze and compare multiple cryptocurrencies across various metrics including market data, social metrics, and supply information. Features include dynamic charts, customizable comparisons, and data export capabilities.
+A real-time cryptocurrency comparison tool that allows users to analyze and compare multiple cryptocurrencies across various metrics including market data, social metrics, and supply information.
+
+## Example
+
+You can compare tokens by:
+
+1. Direct URL: `http://localhost:3000/?tokenids=20947,32452,21794`
+
+   - MOVE
+   - SUI
+   - APTOS
+
+2. Using the search bar:
+   - Search by name or symbol
+   - Select multiple tokens
+   - Click "Compare Selected Tokens"
+
+![Example Comparison](./data-example.png)
 
 ## Features
 
