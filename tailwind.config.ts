@@ -1,6 +1,6 @@
 import type { Config } from "tailwindcss";
 
-export default {
+const config: Config = {
   content: [
     "./pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./components/**/*.{js,ts,jsx,tsx,mdx}",
@@ -8,11 +8,19 @@ export default {
   ],
   theme: {
     extend: {
-      colors: {
-        background: "var(--background)",
-        foreground: "var(--foreground)",
+      keyframes: {
+        "spin-gradient": {
+          "0%": { "border-top-color": "transparent" },
+          "50%": { "border-right-color": "transparent" },
+          "100%": { "border-top-color": "transparent" },
+        },
+      },
+      animation: {
+        "spin-gradient": "spin-gradient 1s linear infinite",
       },
     },
   },
   plugins: [],
-} satisfies Config;
+};
+
+export default config;

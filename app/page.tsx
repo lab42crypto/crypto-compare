@@ -7,6 +7,7 @@ import ComparisonTable from "@/components/ComparisonTable";
 import MetricsChart from "@/components/MetricsChart";
 import type { SearchToken, TokenResult } from "@/types/token";
 import html2canvas from "html2canvas";
+import LoadingSpinner from "@/components/LoadingSpinner";
 
 // Create a wrapper component for the main content
 function HomeContent() {
@@ -282,10 +283,16 @@ function HomeContent() {
         onSearch={handleSearch}
         onClearAll={handleClearAll}
         onReorder={handleReorder}
+        isSearching={isSearching}
       />
 
       {isSearching ? (
-        <div className="text-center mt-8">Loading...</div>
+        <div className="flex flex-col items-center justify-center mt-16 gap-4">
+          <LoadingSpinner />
+          <span className="text-gray-500 font-medium">
+            Fetching token data...
+          </span>
+        </div>
       ) : (
         searchResults.length > 0 &&
         selectedTokens.length > 0 && (

@@ -164,7 +164,7 @@ export default function ComparisonTable({
                     <div className="flex flex-wrap items-center gap-3">
                       {sortedResults.map((result) => (
                         <div
-                          key={result.symbol}
+                          key={result.id}
                           className="inline-block"
                           style={{ lineHeight: "20px" }}
                         >
@@ -194,7 +194,7 @@ export default function ComparisonTable({
                 </th>
                 {sortedResults.map((result) => (
                   <th
-                    key={result.symbol}
+                    key={result.id}
                     className="px-6 py-4 border-b text-left text-sm font-semibold text-gray-900"
                   >
                     <div className="flex items-center space-x-2">
@@ -232,7 +232,7 @@ export default function ComparisonTable({
                   </td>
                   {sortedResults.map((result: TokenResult) => (
                     <td
-                      key={result.symbol}
+                      key={result.id}
                       className={`px-6 py-4 text-sm font-mono whitespace-nowrap ${
                         row.className?.(
                           result[row.key as keyof TokenResult] as number

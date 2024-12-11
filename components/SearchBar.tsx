@@ -35,6 +35,7 @@ interface SearchBarProps {
   onSearch: () => void;
   onClearAll: () => void;
   onReorder: (tokens: SearchToken[]) => void;
+  isSearching: boolean;
 }
 
 export default function SearchBar({
@@ -43,6 +44,7 @@ export default function SearchBar({
   onSearch,
   onClearAll,
   onReorder,
+  isSearching,
 }: SearchBarProps) {
   const [search, setSearch] = useState("");
   const [results, setResults] = useState<TokenResult[]>([]);
@@ -214,15 +216,18 @@ export default function SearchBar({
       {/* Search Button */}
       <button
         onClick={onSearch}
-        disabled={selectedTokens.length === 0}
-        className={`mt-4 w-full py-2 px-4 rounded-lg ${
-          selectedTokens.length > 0
+        disabled={selectedTokens.length === 0 || isSearching}
+        className={`mt-4 w-full py-2 px-4 rounded-lg flex items-center justify-center gap-2 ${
+          selectedTokens.length > 0 && !isSearching
             ? "bg-blue-500 hover:bg-blue-600 text-white"
             : "bg-gray-300 text-gray-500 cursor-not-allowed"
         }`}
       >
+        {isSearching && <i className="fas fa-spinner animate-spin"></i>}
         {selectedTokens.length === 0
           ? "Select tokens to compare"
+          : isSearching
+          ? "Loading..."
           : "Compare Selected Tokens"}
       </button>
     </div>
