@@ -4,9 +4,10 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "npx puppeteer browsers install chrome && next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "vercel-build": "npx puppeteer browsers install chrome && next build"
   },
   "dependencies": {
     "@types/react-beautiful-dnd": "^13.1.8",
