@@ -7,7 +7,7 @@
     "build": "npx puppeteer browsers install chrome && next build",
     "start": "next start",
     "lint": "next lint",
-    "vercel-build": "npx puppeteer browsers install chrome && next build"
+    "vercel-build": "PUPPETEER_CACHE_DIR=/vercel/.cache/puppeteer npx puppeteer browsers install chrome && next build"
   },
   "dependencies": {
     "@types/react-beautiful-dnd": "^13.1.8",
