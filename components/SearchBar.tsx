@@ -8,6 +8,7 @@ import {
   Draggable,
   DropResult,
 } from "react-beautiful-dnd";
+import DragDropWrapper from "@/components/DragDropWrapper";
 
 interface TokenResult {
   id: number;
@@ -98,16 +99,6 @@ export default function SearchBar({
     setShowDropdown(false);
   };
 
-  const handleDragEnd = (result: DropResult) => {
-    if (!result.destination) return;
-
-    const items = Array.from(selectedTokens);
-    const [reorderedItem] = items.splice(result.source.index, 1);
-    items.splice(result.destination.index, 0, reorderedItem);
-
-    onReorder(items);
-  };
-
   return (
     <div className="w-full max-w-md mb-8">
       <div className="relative">
@@ -194,8 +185,8 @@ export default function SearchBar({
       </div>
 
       {/* Selected Tokens Display */}
-      <div className="mt-4">
-        {selectedTokens.length > 0 && (
+      {selectedTokens.length > 0 && (
+        <div className="mt-4">
           <div className="flex justify-between items-center mb-2">
             <div className="flex items-center gap-2">
               <span className="text-sm text-gray-600">
@@ -212,61 +203,13 @@ export default function SearchBar({
               Clear All
             </button>
           </div>
-        )}
-        <DragDropContext onDragEnd={handleDragEnd}>
-          <Droppable
-            droppableId="tokens"
-            direction="horizontal"
-            isDropDisabled={false}
-            isCombineEnabled={false}
-            ignoreContainerClipping={false}
-          >
-            {(provided) => (
-              <div
-                ref={provided.innerRef}
-                {...provided.droppableProps}
-                className="flex flex-wrap gap-2"
-              >
-                {selectedTokens.map((token, index) => (
-                  <Draggable
-                    key={token.id}
-                    draggableId={token.id.toString()}
-                    index={index}
-                    isDragDisabled={false}
-                  >
-                    {(provided) => (
-                      <div
-                        ref={provided.innerRef}
-                        {...provided.draggableProps}
-                        {...provided.dragHandleProps}
-                        className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm flex items-center cursor-move"
-                      >
-                        <img
-                          src={token.logo}
-                          alt={`${token.name} logo`}
-                          className="w-4 h-4 mr-2 rounded-full"
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).src =
-                              "https://s2.coinmarketcap.com/static/img/coins/64x64/1.png";
-                          }}
-                        />
-                        {token.name}
-                        <button
-                          onClick={() => onTokenSelect(token)}
-                          className="ml-2 text-blue-600 hover:text-blue-800"
-                        >
-                          ×
-                        </button>
-                      </div>
-                    )}
-                  </Draggable>
-                ))}
-                {provided.placeholder}
-              </div>
-            )}
-          </Droppable>
-        </DragDropContext>
-      </div>
+          <DragDropWrapper
+            selectedTokens={selectedTokens}
+            onTokenSelect={onTokenSelect}
+            onReorder={onReorder}
+          />
+        </div>
+      )}
 
       {/* Search Button */}
       <button

@@ -77,7 +77,7 @@ export async function scrapeTwitterFollowers(
     console.log(`⏳ Waiting for content to load...`);
     await new Promise((resolve) => setTimeout(resolve, 3000));
 
-    let followersText = null;
+    let followersText: string | null = null;
     for (const selector of ['a[href$="verified_followers"]']) {
       try {
         console.log(`🔍 Trying selector: ${selector}`);
@@ -92,8 +92,10 @@ export async function scrapeTwitterFollowers(
             break;
           }
         }
-      } catch (e) {
-        console.log(`❌ Selector "${selector}" failed:`, e.message);
+      } catch (e: unknown) {
+        if (e instanceof Error) {
+          console.log(`❌ Selector "${selector}" failed:`, e.message);
+        }
       }
     }
 

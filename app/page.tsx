@@ -1,15 +1,15 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useState, useEffect, useRef, useCallback, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import SearchBar from "@/components/SearchBar";
 import ComparisonTable from "@/components/ComparisonTable";
 import MetricsChart from "@/components/MetricsChart";
 import type { SearchToken, TokenResult } from "@/types/token";
 import html2canvas from "html2canvas";
 
-export default function Home() {
-  const router = useRouter();
+// Create a wrapper component for the main content
+function HomeContent() {
   const searchParams = useSearchParams();
 
   const [selectedTokens, setSelectedTokens] = useState<SearchToken[]>([]);
@@ -53,22 +53,13 @@ export default function Home() {
     }
   }, []);
 
-  const updateUrlParams = (tokens: SearchToken[]) => {
-    const tokenIds = tokens.map((t) => t.id).join(",");
-    const newUrl =
-      tokens.length > 0 ? `?tokenids=${tokenIds}` : window.location.pathname;
-    router.push(newUrl);
-  };
-
   const handleTokenSelect = (token: SearchToken) => {
     if (!selectedTokens.find((t) => t.id === token.id)) {
       const newSelectedTokens = [...selectedTokens, token];
       setSelectedTokens(newSelectedTokens);
-      updateUrlParams(newSelectedTokens);
     } else {
       const newSelectedTokens = selectedTokens.filter((t) => t.id !== token.id);
       setSelectedTokens(newSelectedTokens);
-      updateUrlParams(newSelectedTokens);
     }
   };
 
@@ -221,7 +212,6 @@ export default function Home() {
   const handleClearAll = () => {
     setSelectedTokens([]);
     setSearchResults([]);
-    updateUrlParams([]);
   };
 
   // Function to format time difference
@@ -340,5 +330,14 @@ export default function Home() {
         )
       )}
     </main>
+  );
+}
+
+// Update the default export
+export default function Home() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <HomeContent />
+    </Suspense>
   );
 }
