@@ -10,7 +10,7 @@ export async function scrapeTwitterFollowers(
       : undefined;
 
     browser = await puppeteer.launch({
-      headless: "new",
+      headless: true,
       executablePath,
       args: [
         "--no-sandbox",
@@ -19,9 +19,10 @@ export async function scrapeTwitterFollowers(
       ],
     });
 
-    // Rest of your scraping code...
     const page = await browser.newPage();
-    // ...
+    await page.goto(`https://twitter.com/${username}`);
+    // Add your scraping logic here
+    return 0; // Replace with actual follower count
   } catch (error) {
     console.error("Error in scrapeTwitterFollowers:", error);
     throw error;
