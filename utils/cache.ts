@@ -17,7 +17,13 @@ const CACHE_DURATION = parseInt(
   process.env.TWITTER_CACHE_DURATION || "14400000"
 ); // 4 hours default
 
+// eslint-disable-next-line prefer-const
+let memoryCache: Cache = {};
+
+const isVercel = process.env.VERCEL === "1";
+
 async function ensureCacheDir() {
+  if (isVercel) return;
   try {
     await fs.access(CACHE_DIR);
   } catch {
@@ -29,6 +35,23 @@ export async function getCachedFollowers(
   username: string
 ): Promise<{ followers: number; suspended: boolean } | null> {
   try {
+    if (isVercel) {
+      const entry = memoryCache[username];
+      if (!entry || Date.now() - entry.timestamp > CACHE_DURATION) {
+        return null;
+      }
+      if (entry.suspended) {
+        console.log(`Account ${username} is suspended (cached)`);
+        return { followers: 0, suspended: true };
+      }
+      if (entry.value === 0) {
+        return null;
+      }
+      console.log(`Using cached followers for ${username}`);
+      return { followers: entry.value, suspended: false };
+    }
+
+    // File-based caching for local development
     await ensureCacheDir();
     const data = await fs.readFile(CACHE_FILE, "utf-8");
     const cache = JSON.parse(data);
@@ -37,16 +60,13 @@ export async function getCachedFollowers(
     if (!entry || Date.now() - entry.timestamp > CACHE_DURATION) {
       return null;
     }
-
     if (entry.suspended) {
       console.log(`Account ${username} is suspended (cached)`);
       return { followers: 0, suspended: true };
     }
-
     if (entry.value === 0) {
-      return null; // Retry if value is 0
+      return null;
     }
-
     console.log(`Using cached followers for ${username}`);
     return { followers: entry.value, suspended: false };
   } catch (error) {
@@ -61,11 +81,25 @@ export async function cacheFollowers(
   suspended: boolean
 ): Promise<void> {
   try {
+    if (isVercel) {
+      const existingEntry = memoryCache[username];
+      const followerCount =
+        followers === 0 && existingEntry?.value
+          ? existingEntry.value
+          : followers;
+
+      memoryCache[username] = {
+        value: followerCount,
+        timestamp: Date.now(),
+        suspended,
+      };
+      return;
+    }
+
+    // File-based caching for local development
     await ensureCacheDir();
     const cache = await loadCache();
     const existingEntry = cache[username];
-
-    // If new count is 0 and we have a previous non-zero count, keep the old count
     const followerCount =
       followers === 0 && existingEntry?.value ? existingEntry.value : followers;
 
@@ -82,6 +116,9 @@ export async function cacheFollowers(
 }
 
 async function loadCache(): Promise<Cache> {
+  if (isVercel) {
+    return memoryCache;
+  }
   try {
     const data = await fs.readFile(CACHE_FILE, "utf-8");
     return JSON.parse(data);

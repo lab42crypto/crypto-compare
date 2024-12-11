@@ -14,8 +14,13 @@ const CACHE_DURATION = parseInt(
   process.env.TOKEN_LIST_CACHE_DURATION || "14400000"
 ); // 4 hours default
 
-// Add function to ensure cache directory exists
+// eslint-disable-next-line prefer-const
+let memoryCache: TokenListCache | null = null;
+
+const isVercel = process.env.VERCEL === "1";
+
 async function ensureCacheDir() {
+  if (isVercel) return;
   try {
     await fs.access(CACHE_DIR);
   } catch {
@@ -25,20 +30,28 @@ async function ensureCacheDir() {
 
 export async function getCachedTokenList(): Promise<CoinMarketCapToken[]> {
   try {
-    // Try to read cache file
+    if (isVercel) {
+      if (
+        memoryCache &&
+        Date.now() - memoryCache.timestamp < memoryCache.expiresIn
+      ) {
+        console.log("Using in-memory cached token list");
+        return memoryCache.tokens;
+      }
+      return await fetchAndCacheTokenList();
+    }
+
+    // File-based caching for local development
     const cacheData = await fs.readFile(CACHE_FILE, "utf-8");
     const cache: TokenListCache = JSON.parse(cacheData);
 
-    // Check if cache is still valid
     if (Date.now() - cache.timestamp < cache.expiresIn) {
       console.log("Using cached token list");
       return cache.tokens;
     }
 
-    // Cache expired, fetch new data
     return await fetchAndCacheTokenList();
   } catch (error) {
-    // If file doesn't exist or is invalid, fetch new data
     console.log("No valid cache found, fetching fresh data");
     return await fetchAndCacheTokenList();
   }
@@ -49,8 +62,6 @@ async function fetchAndCacheTokenList(): Promise<CoinMarketCapToken[]> {
   console.log("Fetching fresh token list");
 
   const PAGE_SIZE = 5000;
-
-  // Fetch both pages concurrently
   const [firstPageTokens, secondPageTokens] = await Promise.all([
     fetchTokenPage(1, PAGE_SIZE),
     fetchTokenPage(PAGE_SIZE + 1, PAGE_SIZE),
@@ -59,14 +70,18 @@ async function fetchAndCacheTokenList(): Promise<CoinMarketCapToken[]> {
   const allTokens = [...firstPageTokens, ...secondPageTokens];
   console.log(`Total tokens fetched: ${allTokens.length}`);
 
-  // Save to cache file
   const cache: TokenListCache = {
     tokens: allTokens,
     timestamp: Date.now(),
     expiresIn: CACHE_DURATION,
   };
 
-  await fs.writeFile(CACHE_FILE, JSON.stringify(cache, null, 2));
+  if (isVercel) {
+    memoryCache = cache;
+  } else {
+    await fs.writeFile(CACHE_FILE, JSON.stringify(cache, null, 2));
+  }
+
   return allTokens;
 }
 
@@ -98,6 +113,9 @@ export async function refreshTokenCache(): Promise<void> {
 
 export async function getLastUpdateTime(): Promise<number | null> {
   try {
+    if (isVercel) {
+      return memoryCache?.timestamp || null;
+    }
     const cacheData = await fs.readFile(CACHE_FILE, "utf-8");
     const cache: TokenListCache = JSON.parse(cacheData);
     return cache.timestamp;

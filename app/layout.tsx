@@ -49,12 +49,16 @@ export const metadata: Metadata = {
     index: true,
     follow: true,
   },
-  viewport: "width=device-width, initial-scale=1",
-  themeColor: "#ffffff",
   icons: {
     icon: [{ url: "/favicon.svg" }],
     apple: [{ url: "/favicon.svg" }],
   },
+};
+
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
 };
 
 export default function RootLayout({
