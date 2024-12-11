@@ -188,7 +188,7 @@ export async function GET(request: Request) {
     const metricsData = await metricsResponse.json();
 
     // Log the metrics data for debugging
-    console.log("Metrics Data:", JSON.stringify(metricsData, null, 2));
+    // console.log("Metrics Data:", JSON.stringify(metricsData, null, 2));
 
     // Fetch metadata for social info
     const metadataResponse = await fetch(
@@ -208,7 +208,7 @@ export async function GET(request: Request) {
     const metadataData: CoinMarketCapMetadata = await metadataResponse.json();
 
     // Log the metadata for debugging
-    console.log("Metadata:", JSON.stringify(metadataData, null, 2));
+    // console.log("Metadata:", JSON.stringify(metadataData, null, 2));
 
     const result: Record<string, TokenResult> = {};
 

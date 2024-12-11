@@ -194,7 +194,7 @@ function HomeContent() {
 
     setIsRefreshing(true);
     try {
-      const response = await fetch("/api/refresh-cache", {
+      const response = await fetch("/api/tokens/refresh", {
         method: "POST",
       });
 
@@ -230,7 +230,7 @@ function HomeContent() {
   useEffect(() => {
     const fetchLastUpdate = async () => {
       try {
-        const response = await fetch("/api/cache-status");
+        const response = await fetch("/api/tokens/status");
         const data = await response.json();
         setLastUpdate(data.lastUpdate);
       } catch (error) {
@@ -287,11 +287,8 @@ function HomeContent() {
       />
 
       {isSearching ? (
-        <div className="flex flex-col items-center justify-center mt-16 gap-4">
+        <div className="flex justify-center items-center min-h-[400px]">
           <LoadingSpinner />
-          <span className="text-gray-500 font-medium">
-            Fetching token data...
-          </span>
         </div>
       ) : (
         searchResults.length > 0 &&

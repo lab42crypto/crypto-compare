@@ -104,7 +104,7 @@ export async function GET(request: Request) {
       logo: `https://s2.coinmarketcap.com/static/img/coins/64x64/${token.id}.png`,
     }));
 
-    console.log("Processed tokens:", processedTokens);
+    // console.log("Processed tokens:", processedTokens);
     return NextResponse.json({ tokens: processedTokens });
   } catch (error) {
     console.error("Search API error:", error);
