@@ -9,6 +9,51 @@ import {
 } from "react-beautiful-dnd";
 import type { SearchToken } from "@/types/token";
 
+interface DroppableProps {
+  children: any;
+  droppableId: string;
+  direction?: "horizontal" | "vertical";
+  isDropDisabled?: boolean;
+  isCombineEnabled?: boolean;
+  ignoreContainerClipping?: boolean;
+}
+
+// Strict mode wrapper for react-beautiful-dnd
+function StrictModeDroppable({
+  children,
+  droppableId,
+  direction = "horizontal",
+  isDropDisabled = false,
+  isCombineEnabled = false,
+  ignoreContainerClipping = false,
+}: DroppableProps) {
+  const [enabled, setEnabled] = useState(false);
+
+  useEffect(() => {
+    const animation = requestAnimationFrame(() => setEnabled(true));
+    return () => {
+      cancelAnimationFrame(animation);
+      setEnabled(false);
+    };
+  }, []);
+
+  if (!enabled) {
+    return null;
+  }
+
+  return (
+    <Droppable
+      droppableId={droppableId}
+      direction={direction}
+      isDropDisabled={isDropDisabled}
+      isCombineEnabled={isCombineEnabled}
+      ignoreContainerClipping={ignoreContainerClipping}
+    >
+      {children}
+    </Droppable>
+  );
+}
+
 interface DragDropWrapperProps {
   selectedTokens: SearchToken[];
   onTokenSelect: (token: SearchToken) => void;
@@ -20,12 +65,6 @@ export default function DragDropWrapper({
   onTokenSelect,
   onReorder,
 }: DragDropWrapperProps) {
-  const [isClient, setIsClient] = useState(false);
-
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
-
   const handleDragEnd = (result: DropResult) => {
     if (!result.destination) return;
 
@@ -36,18 +75,13 @@ export default function DragDropWrapper({
     onReorder(items);
   };
 
-  if (!isClient) {
-    return null; // Return null on server-side
-  }
-
   return (
     <DragDropContext onDragEnd={handleDragEnd}>
-      <Droppable
+      <StrictModeDroppable
         droppableId="tokens"
         direction="horizontal"
         isDropDisabled={false}
         isCombineEnabled={false}
-        ignoreContainerClipping={false}
       >
         {(provided) => (
           <div
@@ -62,12 +96,14 @@ export default function DragDropWrapper({
                 index={index}
                 isDragDisabled={false}
               >
-                {(provided) => (
+                {(provided, snapshot) => (
                   <div
                     ref={provided.innerRef}
                     {...provided.draggableProps}
                     {...provided.dragHandleProps}
-                    className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm flex items-center cursor-move"
+                    className={`bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm flex items-center cursor-move ${
+                      snapshot.isDragging ? "shadow-lg" : ""
+                    }`}
                   >
                     <img
                       src={token.logo}
@@ -80,7 +116,10 @@ export default function DragDropWrapper({
                     />
                     {token.name}
                     <button
-                      onClick={() => onTokenSelect(token)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onTokenSelect(token);
+                      }}
                       className="ml-2 text-blue-600 hover:text-blue-800"
                     >
                       ×
@@ -92,7 +131,7 @@ export default function DragDropWrapper({
             {provided.placeholder}
           </div>
         )}
-      </Droppable>
+      </StrictModeDroppable>
     </DragDropContext>
   );
 }
